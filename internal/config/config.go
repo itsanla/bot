@@ -42,10 +42,10 @@ func Load() (*Config, error) {
 	acURL := getEnv("ACTIVECOLLAB_URL", "https://collab.javan.co.id")
 	acToken := os.Getenv("ACTIVECOLLAB_TOKEN")
 
-	pollIntervalStr := getEnv("ACTIVECOLLAB_POLL_INTERVAL", "60s")
+	pollIntervalStr := getEnv("ACTIVECOLLAB_POLL_INTERVAL", "30s")
 	pollInterval, err := time.ParseDuration(pollIntervalStr)
 	if err != nil {
-		pollInterval = 60 * time.Second
+		pollInterval = 30 * time.Second
 	}
 
 	return &Config{
