@@ -1,13 +1,17 @@
 services:
   bot:
+    image: itsanla/bot:latest
     build:
       context: .
       dockerfile: Dockerfile
     container_name: itsanla-bot
     restart: unless-stopped
+    ports:
+      - "5005:5005"
     env_file:
       - .env
     environment:
+      - PORT=5005
       - DB_PATH=/app/data/bot.db
     volumes:
       - ./data:/app/data

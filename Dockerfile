@@ -31,7 +31,7 @@ ENV TZ=Asia/Jakarta
 # Copy compiled binary from builder
 COPY --from=builder /build/bin/bot /app/bot
 
-# Persistent volume for SQLite data
-VOLUME ["/app/data"]
+# Expose HTTP status port
+EXPOSE 5005
 
 ENTRYPOINT ["/app/bot"]

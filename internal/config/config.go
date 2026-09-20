@@ -10,6 +10,7 @@ import (
 )
 
 type Config struct {
+	Port                     string
 	DBPath                   string
 	TelegramBotToken         string
 	TelegramChatID           int64
@@ -22,6 +23,7 @@ func Load() (*Config, error) {
 	// Try loading .env if present (ignore error if running in docker where env vars are injected directly)
 	_ = godotenv.Load()
 
+	port := getEnv("PORT", "5005")
 	dbPath := getEnv("DB_PATH", "./data/bot.db")
 	tgToken := os.Getenv("TELEGRAM_BOT_TOKEN")
 	if tgToken == "" {
@@ -47,6 +49,7 @@ func Load() (*Config, error) {
 	}
 
 	return &Config{
+		Port:                     port,
 		DBPath:                   dbPath,
 		TelegramBotToken:         tgToken,
 		TelegramChatID:           tgChatID,
