@@ -17,6 +17,9 @@ type Config struct {
 	ActiveCollabURL          string
 	ActiveCollabToken        string
 	ActiveCollabPollInterval time.Duration
+	QuietHoursStart          int
+	QuietHoursEnd            int
+	Timezone                 string
 }
 
 func Load() (*Config, error) {
@@ -48,6 +51,20 @@ func Load() (*Config, error) {
 		pollInterval = 30 * time.Second
 	}
 
+	quietStartStr := getEnv("QUIET_HOURS_START", "23")
+	quietStart, err := strconv.Atoi(quietStartStr)
+	if err != nil {
+		quietStart = 23
+	}
+
+	quietEndStr := getEnv("QUIET_HOURS_END", "6")
+	quietEnd, err := strconv.Atoi(quietEndStr)
+	if err != nil {
+		quietEnd = 6
+	}
+
+	timezone := getEnv("TIMEZONE", "Asia/Jakarta")
+
 	return &Config{
 		Port:                     port,
 		DBPath:                   dbPath,
@@ -56,6 +73,9 @@ func Load() (*Config, error) {
 		ActiveCollabURL:          acURL,
 		ActiveCollabToken:        acToken,
 		ActiveCollabPollInterval: pollInterval,
+		QuietHoursStart:          quietStart,
+		QuietHoursEnd:            quietEnd,
+		Timezone:                 timezone,
 	}, nil
 }
 

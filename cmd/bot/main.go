@@ -38,16 +38,21 @@ func main() {
 	manager := service.NewManager(database)
 
 	// Register ActiveCollab notification service
+	var acService *activecollab.Service
 	if cfg.ActiveCollabToken != "" {
-		acService := activecollab.NewService(
+		acService = activecollab.NewService(
 			cfg.ActiveCollabURL,
 			cfg.ActiveCollabToken,
 			database,
 			tgClient,
 			cfg.ActiveCollabPollInterval,
+			cfg.QuietHoursStart,
+			cfg.QuietHoursEnd,
+			cfg.Timezone,
 		)
 		manager.Register(acService)
-		log.Printf("Registered service: %s (interval: %v)", acService.Name(), acService.Interval())
+		log.Printf("Registered service: %s (interval: %v, quiet hours: %02d:00 - %02d:00 %s)",
+			acService.Name(), acService.Interval(), cfg.QuietHoursStart, cfg.QuietHoursEnd, cfg.Timezone)
 	} else {
 		log.Println("Warning: ACTIVECOLLAB_TOKEN is empty, ActiveCollab service skipped.")
 	}
@@ -61,20 +66,28 @@ func main() {
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"status":  "ok",
 			"service": "itsanla/bot",
-			"version": "v1.0.0",
+			"version": "v1.0.2",
 		})
 	})
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		lastID, _ := database.GetLastEventID("activecollab")
+		inQuiet := false
+		if acService != nil {
+			inQuiet = acService.IsInQuietHours()
+		}
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
-			"status":           "running",
-			"service":          "itsanla/bot",
-			"version":          "v1.0.0",
-			"uptime_seconds":   int64(time.Since(startTime).Seconds()),
-			"active_services":  []string{"activecollab"},
-			"ac_last_event_id": lastID,
+			"status":            "running",
+			"service":           "itsanla/bot",
+			"version":           "v1.0.2",
+			"uptime_seconds":    int64(time.Since(startTime).Seconds()),
+			"active_services":   []string{"activecollab"},
+			"ac_last_event_id":  lastID,
+			"in_quiet_hours":    inQuiet,
+			"quiet_hours_start": cfg.QuietHoursStart,
+			"quiet_hours_end":   cfg.QuietHoursEnd,
+			"timezone":          cfg.Timezone,
 		})
 	})
 

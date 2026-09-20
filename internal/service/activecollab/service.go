@@ -15,21 +15,34 @@ import (
 )
 
 type Service struct {
-	client   *Client
-	db       *db.DB
-	tg       *telegram.Client
-	interval time.Duration
-	baseURL  string
+	client       *Client
+	db           *db.DB
+	tg           *telegram.Client
+	interval     time.Duration
+	baseURL      string
+	quietStart   int
+	quietEnd     int
+	loc          *time.Location
+	inQuietHours bool
 }
 
-func NewService(baseURL, token string, database *db.DB, tgClient *telegram.Client, interval time.Duration) *Service {
+func NewService(baseURL, token string, database *db.DB, tgClient *telegram.Client, interval time.Duration, quietStart, quietEnd int, timezone string) *Service {
 	baseURL = strings.TrimRight(baseURL, "/")
+
+	loc, err := time.LoadLocation(timezone)
+	if err != nil {
+		loc = time.FixedZone("WIB", 7*3600)
+	}
+
 	return &Service{
-		client:   NewClient(baseURL, token),
-		db:       database,
-		tg:       tgClient,
-		interval: interval,
-		baseURL:  baseURL,
+		client:     NewClient(baseURL, token),
+		db:         database,
+		tg:         tgClient,
+		interval:   interval,
+		baseURL:    baseURL,
+		quietStart: quietStart,
+		quietEnd:   quietEnd,
+		loc:        loc,
 	}
 }
 
@@ -41,7 +54,39 @@ func (s *Service) Interval() time.Duration {
 	return s.interval
 }
 
+// IsInQuietHours returns true if current time falls within the sleep window (e.g. 23:00 - 06:00).
+func (s *Service) IsInQuietHours() bool {
+	if s.quietStart == s.quietEnd {
+		return false
+	}
+	now := time.Now().In(s.loc)
+	hour := now.Hour()
+	if s.quietStart > s.quietEnd {
+		// Overnight range, e.g. 23 to 6: 23, 0, 1, 2, 3, 4, 5
+		return hour >= s.quietStart || hour < s.quietEnd
+	}
+	return hour >= s.quietStart && hour < s.quietEnd
+}
+
 func (s *Service) Run(ctx context.Context) error {
+	// Quiet hours check: pause polling between 23:00 and 06:00
+	if s.IsInQuietHours() {
+		if !s.inQuietHours {
+			s.inQuietHours = true
+			now := time.Now().In(s.loc)
+			log.Printf("[ActiveCollab] Entering quiet hours (%02d:00 - %02d:00 %s, current: %02d:%02d). Polling paused until morning.",
+				s.quietStart, s.quietEnd, s.loc.String(), now.Hour(), now.Minute())
+		}
+		return nil
+	}
+
+	if s.inQuietHours {
+		s.inQuietHours = false
+		now := time.Now().In(s.loc)
+		log.Printf("[ActiveCollab] Exiting quiet hours (current: %02d:%02d %s). Resuming active polling.",
+			now.Hour(), now.Minute(), s.loc.String())
+	}
+
 	lastID, err := s.db.GetLastEventID(s.Name())
 	if err != nil {
 		return fmt.Errorf("failed to get last event id: %w", err)
@@ -73,9 +118,10 @@ func (s *Service) Run(ctx context.Context) error {
 			"🤖 <b>ActiveCollab Service Aktif!</b>\n\n"+
 				"• Server: <code>%s</code>\n"+
 				"• Memantau update baru mulai ID: <b>#%d</b>\n"+
-				"• Interval polling: <b>%v</b>\n\n"+
+				"• Interval polling: <b>%v</b>\n"+
+				"• Jam hening: <b>%02d:00 - %02d:00 WIB</b> (Polling mati saat tidur)\n\n"+
 				"Notifikasi task dan komentar akan otomatis masuk ke sini.",
-			html.EscapeString(s.baseURL), maxID, s.interval,
+			html.EscapeString(s.baseURL), maxID, s.interval, s.quietStart, s.quietEnd,
 		)
 		_ = s.tg.SendMessage(initMsg)
 		log.Printf("[ActiveCollab] Initialized tracking starting from event #%d", maxID)
