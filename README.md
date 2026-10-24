@@ -84,6 +84,17 @@ make run
 
 ---
 
+## 🧭 Triage Task ke Hermes (opsional)
+
+Kalau `HERMES_WEBHOOK_URL` diisi, notifikasi **Task Baru** dan **Task Dialihkan** juga dikirim ke rute webhook Hermes (`collab-triage`) setelah notifikasi Telegram biasa terkirim. Di sisi Hermes, rute itu menjalankan analisis Claude Code (baca saja) dan mengirim hasilnya ke topik grup Telegram.
+
+* Payload: `event_type=collab_task`, `notification_id`, `class`, `task_id`, `project_id`, `task_name`, `url`.
+* Tanda tangan: skema generic V2 Hermes, `X-Webhook-Signature-V2` = hex HMAC-SHA256 dari `<timestamp>.<body>` dengan `HERMES_WEBHOOK_SECRET`, plus `X-Webhook-Timestamp`.
+* Dikirim di goroutine terpisah; galat jaringan atau 5xx dicoba ulang 3 kali, `X-Request-ID` sama per notifikasi supaya Hermes membuang duplikat.
+* Dari container, gateway Hermes di host dijangkau lewat `host.docker.internal` (`extra_hosts: host-gateway` di compose).
+
+---
+
 ## 🗄 Penyimpanan Data (SQLite)
 
 Database disimpan di `./data/bot.db` (atau `/app/data/bot.db` di dalam container):

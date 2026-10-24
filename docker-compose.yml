@@ -8,6 +8,9 @@ services:
     restart: unless-stopped
     ports:
       - "5005:5005"
+    extra_hosts:
+      # HERMES_WEBHOOK_URL=http://host.docker.internal:6005/... menjangkau gateway Hermes di host
+      - "host.docker.internal:host-gateway"
     env_file:
       - .env
     environment:

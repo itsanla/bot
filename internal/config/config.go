@@ -20,6 +20,8 @@ type Config struct {
 	QuietHoursStart          int
 	QuietHoursEnd            int
 	Timezone                 string
+	HermesWebhookURL         string
+	HermesWebhookSecret      string
 }
 
 func Load() (*Config, error) {
@@ -65,6 +67,12 @@ func Load() (*Config, error) {
 
 	timezone := getEnv("TIMEZONE", "Asia/Jakarta")
 
+	hermesURL := os.Getenv("HERMES_WEBHOOK_URL")
+	hermesSecret := os.Getenv("HERMES_WEBHOOK_SECRET")
+	if hermesURL != "" && hermesSecret == "" {
+		return nil, fmt.Errorf("HERMES_WEBHOOK_SECRET is required when HERMES_WEBHOOK_URL is set")
+	}
+
 	return &Config{
 		Port:                     port,
 		DBPath:                   dbPath,
@@ -76,6 +84,8 @@ func Load() (*Config, error) {
 		QuietHoursStart:          quietStart,
 		QuietHoursEnd:            quietEnd,
 		Timezone:                 timezone,
+		HermesWebhookURL:         hermesURL,
+		HermesWebhookSecret:      hermesSecret,
 	}, nil
 }
 

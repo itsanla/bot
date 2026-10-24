@@ -50,6 +50,10 @@ func main() {
 			cfg.QuietHoursEnd,
 			cfg.Timezone,
 		)
+		if cfg.HermesWebhookURL != "" {
+			acService.EnableTriage(cfg.HermesWebhookURL, cfg.HermesWebhookSecret)
+			log.Printf("ActiveCollab triage: new/reassigned tasks forwarded to %s", cfg.HermesWebhookURL)
+		}
 		manager.Register(acService)
 		log.Printf("Registered service: %s (interval: %v, quiet hours: %02d:00 - %02d:00 %s)",
 			acService.Name(), acService.Interval(), cfg.QuietHoursStart, cfg.QuietHoursEnd, cfg.Timezone)
@@ -66,7 +70,7 @@ func main() {
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"status":  "ok",
 			"service": "itsanla/bot",
-			"version": "v1.0.2",
+			"version": "v1.1.0",
 		})
 	})
 
@@ -80,7 +84,7 @@ func main() {
 		_ = json.NewEncoder(w).Encode(map[string]interface{}{
 			"status":            "running",
 			"service":           "itsanla/bot",
-			"version":           "v1.0.2",
+			"version":           "v1.1.0",
 			"uptime_seconds":    int64(time.Since(startTime).Seconds()),
 			"active_services":   []string{"activecollab"},
 			"ac_last_event_id":  lastID,

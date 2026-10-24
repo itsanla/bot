@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"html"
 	"log"
+	"net/http"
 	"sort"
 	"strconv"
 	"strings"
@@ -24,6 +25,10 @@ type Service struct {
 	quietEnd     int
 	loc          *time.Location
 	inQuietHours bool
+
+	triageURL    string
+	triageSecret string
+	triageHTTP   *http.Client
 }
 
 func NewService(baseURL, token string, database *db.DB, tgClient *telegram.Client, interval time.Duration, quietStart, quietEnd int, timezone string) *Service {
@@ -173,6 +178,10 @@ func (s *Service) Run(ctx context.Context) error {
 
 		_ = s.db.RecordNotification(s.Name(), n.ID, n.Class, title, "")
 		_ = s.db.SetLastEventID(s.Name(), n.ID)
+
+		if s.triageURL != "" && isTriageEvent(n) {
+			go s.dispatchTriage(s.triagePayload(n, payload.Related))
+		}
 
 		// Short pause to avoid Telegram rate limits if multiple events burst
 		time.Sleep(300 * time.Millisecond)
